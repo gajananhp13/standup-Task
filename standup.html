@@ -1,0 +1,1645 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Team Standup</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Inter:wght@400;500;600&display=swap');
+
+  :root {
+    --bg: #F7F6F3;
+    --surface: #FFFFFF;
+    --ink: #1A1A2E;
+    --accent: #3D5A80;
+    --accent-light: rgba(61,90,128,0.1);
+    --warn: #E07A5F;
+    --good: #5BA37A;
+    --muted: #9B9B9B;
+    --border: #e0e0e0;
+    --shadow: rgba(0,0,0,0.08);
+    --font-display: 'DM Serif Display', serif;
+    --font-body: 'Inter', sans-serif;
+    --avatar-colors: #3D5A80, #E07A5F, #5BA37A, #E6A84C, #8B5CF6, #EC4899;
+  }
+
+  .dark {
+    --bg: #121212;
+    --surface: #1E1E1E;
+    --ink: #E4E4E7;
+    --accent: #5B8DEF;
+    --accent-light: rgba(91,141,239,0.15);
+    --warn: #F5876E;
+    --good: #6BC394;
+    --muted: #7F7F7F;
+    --border: #333;
+    --shadow: rgba(0,0,0,0.3);
+  }
+
+  *, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 15px;
+    line-height: 1.5;
+    min-height: 100vh;
+    transition: background 0.3s ease, color 0.3s ease;
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--muted); border-radius: 3px; }
+
+  /* Progress bar */
+  #progress-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 4px;
+    background: var(--accent);
+    transition: width 0.4s ease;
+    z-index: 100;
+    width: 0%;
+  }
+
+  /* Resume banner */
+  #resume-banner {
+    background: var(--accent);
+    color: #fff;
+    text-align: center;
+    padding: 10px 16px;
+    font-size: 14px;
+    display: none;
+    position: fixed;
+    top: 4px;
+    left: 0;
+    right: 0;
+    z-index: 99;
+  }
+  #resume-banner button {
+    background: #fff;
+    color: var(--accent);
+    border: none;
+    padding: 4px 14px;
+    border-radius: 6px;
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-left: 10px;
+  }
+  #resume-banner button:hover { opacity: 0.9; }
+  #resume-banner .discard {
+    background: transparent;
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.5);
+  }
+
+  /* Toast */
+  #toast-container {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 200;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: center;
+    pointer-events: none;
+  }
+  .toast {
+    background: var(--surface);
+    color: var(--ink);
+    padding: 10px 24px;
+    border-radius: 10px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    font-size: 14px;
+    font-weight: 500;
+    font-family: var(--font-body);
+    animation: toastIn 0.3s ease, toastOut 0.3s ease 2.2s forwards;
+    pointer-events: auto;
+    border: 1px solid var(--border);
+  }
+  @keyframes toastIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes toastOut { from { opacity: 1; } to { opacity: 0; transform: translateY(12px); } }
+
+  /* Main container */
+  .container {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 60px 24px 80px;
+  }
+
+  /* Header bar */
+  .top-bar {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-bottom: 20px;
+    align-items: center;
+  }
+  .icon-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    transition: all 0.2s;
+  }
+  .icon-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--accent-light);
+  }
+  .session-timer {
+    font-size: 12px;
+    color: var(--muted);
+    font-family: 'SF Mono', 'Consolas', monospace;
+  }
+
+  /* Screens */
+  .screen {
+    animation: slideUp 0.25s ease;
+  }
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  .hidden { display: none !important; }
+
+  /* Card */
+  .card {
+    background: var(--surface);
+    border-radius: 12px;
+    box-shadow: 0 1px 4px var(--shadow);
+    padding: 32px;
+    margin-bottom: 20px;
+    border: 1px solid var(--border);
+  }
+
+  /* Typography */
+  h1 {
+    font-family: var(--font-display);
+    font-size: 32px;
+    font-weight: 400;
+    margin-bottom: 8px;
+    color: var(--ink);
+  }
+  h2 {
+    font-family: var(--font-body);
+    font-size: 20px;
+    font-weight: 600;
+    margin-bottom: 4px;
+    color: var(--ink);
+  }
+  label {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--muted);
+    display: block;
+    margin-bottom: 4px;
+  }
+  .hint {
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 16px;
+  }
+
+  /* Avatar */
+  .avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-display);
+    font-size: 20px;
+    color: #fff;
+    margin: 0 auto 8px;
+    flex-shrink: 0;
+  }
+
+  /* Timer */
+  .timer {
+    font-size: 64px;
+    font-family: 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
+    font-weight: 500;
+    text-align: center;
+    line-height: 1;
+    margin: 8px 0;
+    color: var(--ink);
+    transition: color 0.3s ease;
+  }
+  .timer.warn { color: var(--warn); }
+  .timer.pulse {
+    animation: pulse 0.6s ease;
+  }
+  @keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.04); }
+    100% { transform: scale(1); }
+  }
+  .timer-expired {
+    color: var(--warn) !important;
+    animation: pulse 0.6s ease infinite;
+  }
+
+  .timer-controls {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .timer-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 4px 14px;
+    font-family: var(--font-body);
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .timer-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .timer-btn.active {
+    border-color: var(--warn);
+    color: var(--warn);
+  }
+
+  /* Person header */
+  .person-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+  .person-name {
+    font-family: var(--font-display);
+    font-size: 28px;
+    text-align: center;
+    color: var(--ink);
+  }
+  .person-count {
+    font-size: 12px;
+    color: var(--muted);
+    text-align: center;
+    margin-bottom: 4px;
+  }
+
+  /* Star rating */
+  .star-row {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    margin-bottom: 16px;
+    direction: rtl;
+  }
+  .star-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 4px 8px;
+    font-size: 24px;
+    cursor: pointer;
+    transition: all 0.15s;
+    color: var(--muted);
+    line-height: 1;
+  }
+  .star-btn:hover,
+  .star-btn:hover ~ .star-btn {
+    color: #f5b342;
+    border-color: #f5b342;
+  }
+  .star-btn.filled {
+    color: #f5b342;
+    border-color: #f5b342;
+    background: rgba(245,179,66,0.08);
+  }
+  .star-label {
+    font-size: 12px;
+    color: var(--muted);
+    text-align: center;
+    margin-top: -10px;
+    margin-bottom: 16px;
+    min-height: 18px;
+  }
+
+  /* Textareas */
+  .field-group {
+    margin-bottom: 14px;
+    position: relative;
+  }
+  .field-group .badge {
+    position: absolute;
+    top: 0;
+    right: 0;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: var(--warn);
+    color: #fff;
+    display: none;
+  }
+  .field-group .badge.visible { display: block; }
+
+  textarea {
+    width: 100%;
+    min-height: 56px;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-family: var(--font-body);
+    font-size: 14px;
+    color: var(--ink);
+    background: var(--surface);
+    resize: vertical;
+    outline: none;
+    transition: border-color 0.2s ease;
+    line-height: 1.5;
+  }
+  textarea:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px var(--accent-light);
+  }
+  textarea::placeholder { color: var(--muted); }
+  textarea.blocker-highlight {
+    border-color: var(--warn);
+    box-shadow: 0 0 0 2px rgba(224,122,95,0.12);
+  }
+
+  /* Name input area */
+  .name-input-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .name-input-row input {
+    flex: 1;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-family: var(--font-body);
+    font-size: 15px;
+    color: var(--ink);
+    background: var(--surface);
+    outline: none;
+  }
+  .name-input-row input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px var(--accent-light);
+  }
+  .name-input-row button {
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-family: var(--font-body);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    background: var(--accent);
+    color: #fff;
+    white-space: nowrap;
+  }
+  .name-input-row button:hover { opacity: 0.9; }
+
+  /* Name tags */
+  .name-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 16px;
+    min-height: 36px;
+  }
+  .name-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--accent-light);
+    padding: 4px 10px 4px 12px;
+    border-radius: 6px;
+    font-size: 14px;
+    color: var(--ink);
+  }
+  .name-tag .remove {
+    cursor: pointer;
+    color: var(--muted);
+    font-size: 16px;
+    line-height: 1;
+    background: none;
+    border: none;
+    padding: 0 2px;
+    font-family: var(--font-body);
+    touch-action: manipulation;
+  }
+  .name-tag .remove:hover { color: var(--warn); }
+
+  .setup-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .setup-actions .btn { flex: 1; min-width: 130px; }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 12px 28px;
+    border-radius: 8px;
+    font-family: var(--font-body);
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: background 0.2s ease, opacity 0.2s ease;
+  }
+  .btn:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { opacity: 0.9; }
+  .btn-primary:disabled { opacity: 0.35; cursor: not-allowed; }
+  .btn-secondary {
+    background: transparent;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+  }
+  .btn-secondary:hover { background: var(--accent-light); }
+  .btn-warn {
+    background: transparent;
+    color: var(--warn);
+    border: 1px solid var(--warn);
+  }
+  .btn-warn:hover { background: rgba(224,122,95,0.08); }
+  .btn-success { background: var(--good); color: #fff; }
+  .btn-success:hover { opacity: 0.9; }
+  .btn-row {
+    display: flex;
+    gap: 12px;
+    margin-top: 16px;
+    flex-wrap: wrap;
+  }
+  .btn-row .btn { flex: 1; min-width: 130px; }
+
+  .kbd-hint {
+    font-size: 11px;
+    color: var(--muted);
+    text-align: center;
+    margin-top: 8px;
+  }
+  .kbd-hint kbd {
+    background: var(--bg);
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-family: 'SF Mono', 'Consolas', monospace;
+    font-size: 11px;
+    border: 1px solid var(--border);
+  }
+
+  /* Validation */
+  .validation-msg {
+    font-size: 13px;
+    color: var(--warn);
+    margin-top: 8px;
+    display: none;
+  }
+  .validation-msg.visible { display: block; }
+
+  /* Summary */
+  .summary-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .summary-header-info { flex: 1; }
+  .summary-header-info h1 { margin-bottom: 4px; }
+  .summary-header-info .meta {
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .summary-person {
+    margin-bottom: 24px;
+    padding: 16px;
+    border-radius: 10px;
+    background: var(--bg);
+  }
+  .summary-person .person-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  .summary-person .person-head .mini-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-display);
+    font-size: 15px;
+    color: #fff;
+    flex-shrink: 0;
+  }
+  .summary-person .person-head h3 {
+    font-family: var(--font-display);
+    font-size: 18px;
+    font-weight: 400;
+  }
+  .summary-person .section { margin-bottom: 8px; }
+  .summary-person .section strong {
+    font-size: 12px;
+    color: var(--muted);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .summary-person .section p {
+    font-size: 14px;
+    color: var(--ink);
+    margin-top: 2px;
+  }
+  .summary-person .section .blocker-tag {
+    display: inline-block;
+    background: rgba(224,122,95,0.12);
+    color: var(--warn);
+    font-size: 11px;
+    font-weight: 600;
+    padding: 1px 8px;
+    border-radius: 4px;
+    margin-left: 6px;
+  }
+  .summary-person .not-present {
+    color: var(--muted);
+    font-style: italic;
+  }
+  .summary-person .time-spent {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+
+  /* Scribe notes */
+  .scribe-section {
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+  }
+  .scribe-section h3 {
+    font-family: var(--font-display);
+    font-size: 18px;
+    font-weight: 400;
+    margin-bottom: 8px;
+  }
+
+  /* Confetti canvas */
+  #confetti-canvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1000;
+  }
+
+  /* Export dropdown */
+  .export-group {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .export-group .btn { flex: 1; min-width: 100px; }
+
+  /* Hidden textarea for copy */
+  #copy-helper {
+    position: absolute;
+    left: -9999px;
+    opacity: 0;
+    height: 1px;
+    width: 1px;
+  }
+
+  /* Settings panel */
+  .settings-panel {
+    margin-bottom: 16px;
+  }
+  .settings-panel summary {
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--muted);
+    font-weight: 500;
+    padding: 4px 0;
+  }
+  .settings-panel .settings-body {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 10px;
+    padding: 12px;
+    background: var(--bg);
+    border-radius: 8px;
+  }
+  .setting-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .setting-row label {
+    margin-bottom: 0;
+    font-size: 13px;
+  }
+  .setting-row input[type="range"] {
+    width: 120px;
+    accent-color: var(--accent);
+  }
+  .setting-row .value {
+    font-family: 'SF Mono', 'Consolas', monospace;
+    font-size: 13px;
+    color: var(--muted);
+    min-width: 36px;
+    text-align: right;
+  }
+  .toggle-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .toggle {
+    position: relative;
+    width: 36px;
+    height: 20px;
+    background: var(--border);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background 0.2s;
+    border: none;
+    padding: 0;
+  }
+  .toggle.on { background: var(--accent); }
+  .toggle::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #fff;
+    transition: transform 0.2s;
+  }
+  .toggle.on::after { transform: translateX(16px); }
+
+  @media (max-width: 500px) {
+    .container { padding: 40px 16px 60px; }
+    .card { padding: 20px; }
+    h1 { font-size: 26px; }
+    .timer { font-size: 48px; }
+    .btn { padding: 10px 16px; font-size: 14px; }
+    .btn-row .btn { min-width: 100px; }
+    .person-name { font-size: 24px; }
+    .summary-header { flex-direction: column; text-align: center; }
+  }
+
+  /* Drag and drop */
+  .name-tag {
+    cursor: grab;
+    user-select: none;
+    touch-action: none;
+  }
+  .name-tag.dragging {
+    opacity: 0.4;
+    cursor: grabbing;
+  }
+  .name-tag.drag-over {
+    border: 1px dashed var(--accent);
+    background: var(--accent-light);
+  }
+
+  /* Print styles */
+  @media print {
+    body { background: #fff; color: #000; }
+    #progress-bar, #resume-banner, #toast-container, #confetti-canvas,
+    .top-bar, .export-group, .scribe-section textarea,
+    .btn-row, .kbd-hint, .settings-panel, .name-input-row,
+    .timer-controls, .star-row { display: none !important; }
+    .container { max-width: 100%; padding: 20px; }
+    .card { box-shadow: none; border: none; padding: 0; }
+    .summary-person { break-inside: avoid; page-break-inside: avoid; }
+    #summary-screen { animation: none; }
+    .hint { margin-bottom: 8px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="progress-bar"></div>
+<div id="resume-banner"></div>
+<div id="toast-container"></div>
+<div id="app" class="container"></div>
+<canvas id="confetti-canvas"></canvas>
+
+<script>
+(function () {
+  'use strict';
+
+  // ─── State ────────────────────────────────────────────────────────────────
+  const AVATAR_COLORS = ['#3D5A80','#E07A5F','#5BA37A','#E6A84C','#8B5CF6','#EC4899'];
+
+  let state = {
+    phase: 'setup',
+    members: [],
+    currentIndex: 0,
+    timerRunning: false,
+    timerStart: null,
+    timerElapsed: 0,
+    timerInterval: null,
+    hasPulsed: false,
+    timeLimit: 60000,
+    soundEnabled: true,
+    darkMode: false,
+    sessionStart: null,
+    scribeNotes: ''
+  };
+
+  // ─── DOM refs ─────────────────────────────────────────────────────────────
+  const $ = id => document.getElementById(id);
+  const app = $('app');
+  const progressBar = $('progress-bar');
+  const resumeBanner = $('resume-banner');
+  const toastContainer = $('toast-container');
+
+  // ─── Sound (Web Audio API) ────────────────────────────────────────────────
+  let audioCtx = null;
+  function getAudioCtx() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    return audioCtx;
+  }
+
+  function playBeep(freq, duration, vol) {
+    if (!state.soundEnabled) return;
+    try {
+      const ctx = getAudioCtx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      gain.gain.value = vol || 0.15;
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + duration);
+    } catch (_) {}
+  }
+
+  function playWarnBeep() {
+    playBeep(880, 0.15, 0.12);
+    setTimeout(() => playBeep(660, 0.15, 0.12), 200);
+  }
+
+  function playTimeUp() {
+    playBeep(440, 0.3, 0.15);
+    setTimeout(() => playBeep(330, 0.3, 0.15), 250);
+    setTimeout(() => playBeep(220, 0.4, 0.15), 500);
+  }
+
+  function playComplete() {
+    const notes = [523, 659, 784, 1047];
+    notes.forEach((f, i) => {
+      setTimeout(() => playBeep(f, 0.25, 0.1), i * 150);
+    });
+  }
+
+  // ─── Toast ─────────────────────────────────────────────────────────────────
+  function toast(msg) {
+    const el = document.createElement('div');
+    el.className = 'toast';
+    el.textContent = msg;
+    toastContainer.appendChild(el);
+    setTimeout(() => { if (el.parentNode) el.parentNode.removeChild(el); }, 2600);
+  }
+
+  // ─── Save / Load ──────────────────────────────────────────────────────────
+  function saveSession() {
+    try {
+      const data = {
+        phase: state.phase, members: state.members, currentIndex: state.currentIndex,
+        timerElapsed: state.timerElapsed, timerRunning: state.timerRunning,
+        timerStart: state.timerStart, timeLimit: state.timeLimit,
+        soundEnabled: state.soundEnabled, darkMode: state.darkMode,
+        sessionStart: state.sessionStart, scribeNotes: state.scribeNotes
+      };
+      localStorage.setItem('standupSession', JSON.stringify(data));
+    } catch (_) {}
+  }
+
+  function loadSession() {
+    try {
+      const raw = localStorage.getItem('standupSession');
+      return raw ? JSON.parse(raw) : null;
+    } catch (_) { return null; }
+  }
+
+  function loadPrefs() {
+    try {
+      const raw = localStorage.getItem('standupPrefs');
+      if (!raw) return;
+      const p = JSON.parse(raw);
+      state.darkMode = !!p.darkMode;
+      state.soundEnabled = p.soundEnabled !== false;
+      state.timeLimit = p.timeLimit || 60000;
+    } catch (_) {}
+  }
+
+  function savePrefs() {
+    try {
+      localStorage.setItem('standupPrefs', JSON.stringify({
+        darkMode: state.darkMode,
+        soundEnabled: state.soundEnabled,
+        timeLimit: state.timeLimit
+      }));
+    } catch (_) {}
+  }
+
+  function clearSession() {
+    try { localStorage.removeItem('standupSession'); } catch (_) {}
+  }
+
+  // ─── Timer ────────────────────────────────────────────────────────────────
+  function startTimer() {
+    if (state.timerRunning) return;
+    state.timerRunning = true;
+    state.timerStart = Date.now();
+    updateTimerDisplay(state.timeLimit);
+    state.timerInterval = setInterval(tickTimer, 200);
+  }
+
+  function stopTimer() {
+    if (!state.timerRunning) return;
+    state.timerRunning = false;
+    if (state.timerInterval) {
+      clearInterval(state.timerInterval);
+      state.timerInterval = null;
+    }
+    if (state.timerStart) {
+      state.timerElapsed += Date.now() - state.timerStart;
+    }
+    state.timerStart = null;
+  }
+
+  function pauseTimer() {
+    stopTimer();
+  }
+
+  function resumeTimer() {
+    startTimer();
+  }
+
+  function tickTimer() {
+    if (!state.timerRunning) return;
+    const elapsed = state.timerElapsed + (Date.now() - state.timerStart);
+    const remaining = Math.max(0, state.timeLimit - elapsed);
+    updateTimerDisplay(remaining);
+
+    if (remaining <= 0) {
+      stopTimer();
+      playTimeUp();
+      const el = $('standup-timer');
+      if (el) el.classList.add('timer-expired');
+    }
+  }
+
+  function resetTimer() {
+    stopTimer();
+    state.timerElapsed = 0;
+    state.timerStart = null;
+    state.hasPulsed = false;
+  }
+
+  function updateTimerDisplay(remaining) {
+    const el = $('standup-timer');
+    if (!el) return;
+    const totalSec = Math.ceil(remaining / 1000);
+    const min = String(Math.floor(totalSec / 60)).padStart(2, '0');
+    const sec = String(totalSec % 60).padStart(2, '0');
+    el.textContent = `${min}:${sec}`;
+
+    el.classList.toggle('warn', totalSec <= 30 && totalSec > 0);
+
+    if (totalSec <= 30 && totalSec > 0 && !state.hasPulsed) {
+      state.hasPulsed = true;
+      el.classList.remove('pulse');
+      void el.offsetWidth;
+      el.classList.add('pulse');
+      playWarnBeep();
+    }
+  }
+
+  // ─── Confetti ──────────────────────────────────────────────────────────────
+  function fireConfetti() {
+    const canvas = $('confetti-canvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    const pieces = Array.from({ length: 120 }, () => ({
+      x: Math.random() * canvas.width,
+      y: -20,
+      w: Math.random() * 8 + 4,
+      h: Math.random() * 6 + 3,
+      color: AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)],
+      vx: (Math.random() - 0.5) * 4,
+      vy: Math.random() * 3 + 2,
+      rot: Math.random() * 360,
+      rotV: (Math.random() - 0.5) * 8,
+      opacity: 1
+    }));
+
+    let frame = 0;
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      let alive = false;
+      pieces.forEach(p => {
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += 0.05;
+        p.rot += p.rotV;
+        if (frame > 80) p.opacity = Math.max(0, p.opacity - 0.02);
+        if (p.opacity <= 0) return;
+        alive = true;
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate((p.rot * Math.PI) / 180);
+        ctx.globalAlpha = p.opacity;
+        ctx.fillStyle = p.color;
+        ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+        ctx.restore();
+      });
+      frame++;
+      if (alive) requestAnimationFrame(draw);
+      else ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+    draw();
+  }
+
+  // ─── Rendering ────────────────────────────────────────────────────────────
+  function render() {
+    applyDarkMode();
+    if (state.phase === 'setup') renderSetup();
+    else if (state.phase === 'standup') renderStandup();
+    else if (state.phase === 'summary') renderSummary();
+    updateProgressBar();
+    saveSession();
+  }
+
+  function applyDarkMode() {
+    document.body.classList.toggle('dark', state.darkMode);
+  }
+
+  function updateProgressBar() {
+    if (state.phase === 'setup') {
+      progressBar.style.width = '0%';
+      return;
+    }
+    const total = state.members.length;
+    const done = state.members.filter(m => m.done !== '' || m.skipped).length;
+    const pct = total === 0 ? 0 : Math.round((done / total) * 100);
+    progressBar.style.width = `${Math.min(100, pct)}%`;
+  }
+
+  function getAvatarColor(index) {
+    return AVATAR_COLORS[index % AVATAR_COLORS.length];
+  }
+
+  function getInitials(name) {
+    return name.split(/\s+/).map(w => w[0]).join('').toUpperCase().slice(0, 2);
+  }
+
+  function formatSessionTime() {
+    if (!state.sessionStart) return '';
+    const elapsed = Date.now() - state.sessionStart;
+    const totalSec = Math.floor(elapsed / 1000);
+    const min = Math.floor(totalSec / 60);
+    const sec = totalSec % 60;
+    return `${min}:${String(sec).padStart(2, '0')}`;
+  }
+
+  // ─── Setup ────────────────────────────────────────────────────────────────
+  function renderSetup() {
+    stopTimer();
+    const names = state.members.map(m => m.name);
+    const html = `
+      <div class="screen" id="setup-screen">
+        <div class="top-bar">
+          <span class="session-timer"></span>
+          <button class="icon-btn" id="dark-toggle" aria-label="Toggle dark mode">${state.darkMode ? '☀' : '☾'}</button>
+        </div>
+        <div class="card">
+          <h1>Daily Standup</h1>
+          <p class="hint">Add your team members to start the standup.</p>
+          <div class="name-input-row">
+            <input type="text" id="name-input" placeholder="Enter a name…" autocomplete="off">
+            <button id="add-name-btn">Add</button>
+          </div>
+          <div class="name-tags" id="name-tags">
+            ${names.map((n, i) => `<span class="name-tag" draggable="true" data-index="${i}"><span class="mini-avatar" style="display:inline-flex;width:22px;height:22px;border-radius:50%;align-items:center;justify-content:center;background:${getAvatarColor(i)};color:#fff;font-size:11px;font-weight:600;margin-right:2px;">${getInitials(n)}</span>${escapeHtml(n)}<button class="remove" data-name="${escapeHtml(n)}" aria-label="Remove ${escapeHtml(n)}">&times;</button></span>`).join('')}
+          </div>
+          <details class="settings-panel">
+            <summary>Settings</summary>
+            <div class="settings-body">
+              <div class="setting-row">
+                <label for="time-limit-slider">Time per person</label>
+                <div class="toggle-wrap">
+                  <input type="range" id="time-limit-slider" min="30" max="180" value="${state.timeLimit / 1000}">
+                  <span class="value" id="time-limit-value">${state.timeLimit / 1000}s</span>
+                </div>
+              </div>
+              <div class="setting-row">
+                <label>Sound effects</label>
+                <button class="toggle ${state.soundEnabled ? 'on' : ''}" id="sound-toggle" aria-label="Toggle sound"></button>
+              </div>
+              <div class="setting-row">
+                <label>Dark mode</label>
+                <button class="toggle ${state.darkMode ? 'on' : ''}" id="dark-toggle-setting" aria-label="Toggle dark mode"></button>
+              </div>
+            </div>
+          </details>
+          <div class="setup-actions">
+            <button class="btn btn-primary" id="start-standup-btn" ${names.length < 2 ? 'disabled' : ''}>Start Standup</button>
+            <button class="btn btn-secondary" id="randomize-btn" ${names.length < 2 ? 'disabled' : ''}>Shuffle Order</button>
+          </div>
+          <div class="validation-msg" id="setup-validation">Add at least 2 team members to start.</div>
+        </div>
+      </div>
+    `;
+    app.innerHTML = html;
+
+    const nameInput = $('name-input');
+    const addBtn = $('add-name-btn');
+    const startBtn = $('start-standup-btn');
+    const randomBtn = $('randomize-btn');
+    const validation = $('setup-validation');
+    const tags = $('name-tags');
+    const darkToggle = $('dark-toggle');
+    const soundToggle = $('sound-toggle');
+    const timeSlider = $('time-limit-slider');
+    const timeValue = $('time-limit-value');
+
+    function toggleDark() {
+      state.darkMode = !state.darkMode;
+      applyDarkMode();
+      savePrefs();
+      const dt = $('dark-toggle');
+      if (dt) dt.textContent = state.darkMode ? '☀' : '☾';
+      const ds = $('dark-toggle-setting');
+      if (ds) ds.classList.toggle('on', state.darkMode);
+    }
+
+    darkToggle.addEventListener('click', toggleDark);
+
+    soundToggle.addEventListener('click', () => {
+      state.soundEnabled = !state.soundEnabled;
+      savePrefs();
+      soundToggle.classList.toggle('on', state.soundEnabled);
+    });
+
+    const darkToggleSetting = $('dark-toggle-setting');
+    if (darkToggleSetting) {
+      darkToggleSetting.addEventListener('click', toggleDark);
+    }
+
+    if (timeSlider) {
+      timeSlider.addEventListener('input', () => {
+        const val = parseInt(timeSlider.value);
+        state.timeLimit = val * 1000;
+        timeValue.textContent = val + 's';
+        savePrefs();
+      });
+    }
+
+    function addName() {
+      const val = nameInput.value.trim();
+      if (!val) return;
+      if (state.members.some(m => m.name.toLowerCase() === val.toLowerCase())) {
+        nameInput.value = '';
+        return;
+      }
+      state.members.push({ name: val, done: '', todo: '', blockers: '', rating: 0, skipped: false, timeSpent: 0 });
+      nameInput.value = '';
+      validation.classList.remove('visible');
+      renderSetup();
+      $('name-input').focus();
+    }
+
+    addBtn.addEventListener('click', addName);
+    nameInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); addName(); }
+    });
+
+    tags.querySelectorAll('.remove').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const name = btn.dataset.name;
+        state.members = state.members.filter(m => m.name !== name);
+        renderSetup();
+        $('name-input').focus();
+      });
+    });
+
+    // Drag and drop reorder
+    let dragSrcIndex = null;
+    tags.querySelectorAll('.name-tag').forEach(tag => {
+      tag.addEventListener('dragstart', e => {
+        dragSrcIndex = parseInt(tag.dataset.index);
+        tag.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', '');
+      });
+      tag.addEventListener('dragenter', e => {
+        e.preventDefault();
+        if (parseInt(tag.dataset.index) !== dragSrcIndex) {
+          tag.classList.add('drag-over');
+        }
+      });
+      tag.addEventListener('dragleave', () => {
+        tag.classList.remove('drag-over');
+      });
+      tag.addEventListener('dragover', e => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+      });
+      tag.addEventListener('drop', e => {
+        e.preventDefault();
+        tag.classList.remove('drag-over');
+        const targetIndex = parseInt(tag.dataset.index);
+        if (dragSrcIndex !== null && dragSrcIndex !== targetIndex) {
+          const item = state.members.splice(dragSrcIndex, 1)[0];
+          state.members.splice(targetIndex, 0, item);
+          renderSetup();
+        }
+        dragSrcIndex = null;
+      });
+      tag.addEventListener('dragend', () => {
+        tag.classList.remove('dragging');
+        tags.querySelectorAll('.name-tag').forEach(t => t.classList.remove('drag-over'));
+        dragSrcIndex = null;
+      });
+    });
+
+    startBtn.addEventListener('click', () => {
+      if (state.members.length < 2) {
+        validation.classList.add('visible');
+        return;
+      }
+      state.phase = 'standup';
+      state.currentIndex = 0;
+      state.sessionStart = Date.now();
+      state.scribeNotes = '';
+      state.members.forEach(m => {
+        m.done = ''; m.todo = ''; m.blockers = ''; m.rating = 0; m.skipped = false; m.timeSpent = 0;
+      });
+      resetTimer();
+      render();
+    });
+
+    randomBtn.addEventListener('click', () => {
+      for (let i = state.members.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [state.members[i], state.members[j]] = [state.members[j], state.members[i]];
+      }
+      renderSetup();
+    });
+  }
+
+  // ─── Standup ──────────────────────────────────────────────────────────────
+  function renderStandup() {
+    const member = state.members[state.currentIndex];
+    if (!member) {
+      state.phase = 'summary';
+      render();
+      return;
+    }
+
+    const total = state.members.length;
+    const idx = state.currentIndex + 1;
+    const avatarColor = getAvatarColor(state.currentIndex);
+
+    const html = `
+      <div class="screen" id="standup-screen">
+        <div class="top-bar">
+          <span class="session-timer">⏱ ${formatSessionTime()}</span>
+          <button class="icon-btn" id="dark-toggle" aria-label="Toggle dark mode">${state.darkMode ? '☀' : '☾'}</button>
+        </div>
+        <div class="card">
+          <p class="person-count">${idx} of ${total}</p>
+          <div class="person-header">
+            <div class="avatar" style="background:${avatarColor}">${getInitials(member.name)}</div>
+            <p class="person-name">${escapeHtml(member.name)}</p>
+          </div>
+          <div class="timer" id="standup-timer">${String(Math.floor(state.timeLimit / 60000)).padStart(2, '0')}:${String(Math.floor((state.timeLimit % 60000) / 1000)).padStart(2, '0')}</div>
+          <div class="timer-controls">
+            <button class="timer-btn" id="timer-pause-btn">⏸ Pause</button>
+          </div>
+          <div class="star-row" id="star-row">
+            ${[5,4,3,2,1].map(i => `<button class="star-btn ${member.rating >= i ? 'filled' : ''}" data-rating="${i}">★</button>`).join('')}
+          </div>
+          <p class="star-label" id="star-label">${member.rating > 0 ? renderStarLabel(member.rating) : 'Rate your sprint mood'}</p>
+          <div class="field-group">
+            <label for="field-done">What did you do yesterday?</label>
+            <textarea id="field-done" placeholder="Describe your progress…">${escapeHtml(member.done)}</textarea>
+          </div>
+          <div class="field-group">
+            <label for="field-todo">What will you do today?</label>
+            <textarea id="field-todo" placeholder="Plan for today…">${escapeHtml(member.todo)}</textarea>
+          </div>
+          <div class="field-group">
+            <label for="field-blockers">Any blockers? <span class="badge" id="blocker-badge">BLOCKER</span></label>
+            <textarea id="field-blockers" placeholder="Anything blocking your work…" class="${member.blockers ? 'blocker-highlight' : ''}">${escapeHtml(member.blockers)}</textarea>
+          </div>
+          <div class="btn-row">
+            <button class="btn btn-primary" id="next-person-btn" disabled>Next Person</button>
+            <button class="btn btn-warn" id="skip-person-btn">Skip</button>
+          </div>
+          <p class="kbd-hint"><kbd>Ctrl</kbd>+<kbd>Enter</kbd> to submit &nbsp;·&nbsp; <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd> to skip</p>
+        </div>
+      </div>
+    `;
+    app.innerHTML = html;
+
+    const doneEl = $('field-done');
+    const todoEl = $('field-todo');
+    const blockEl = $('field-blockers');
+    const nextBtn = $('next-person-btn');
+    const skipBtn = $('skip-person-btn');
+    const pauseBtn = $('timer-pause-btn');
+    const starBtns = document.querySelectorAll('.star-btn');
+    const starLabel = $('star-label');
+    const darkToggle = $('dark-toggle');
+
+    darkToggle.addEventListener('click', () => {
+      state.darkMode = !state.darkMode;
+      applyDarkMode();
+      savePrefs();
+    });
+
+    function updatePauseBtn() {
+      if (!pauseBtn) return;
+      if (state.timerRunning) {
+        pauseBtn.textContent = '⏸ Pause';
+        pauseBtn.classList.remove('active');
+      } else {
+        pauseBtn.textContent = '▶ Resume';
+        pauseBtn.classList.add('active');
+      }
+    }
+
+    pauseBtn.addEventListener('click', () => {
+      if (state.timerRunning) {
+        pauseTimer();
+      } else {
+        resumeTimer();
+      }
+      updatePauseBtn();
+    });
+
+    starBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const val = parseInt(btn.dataset.rating);
+        member.rating = member.rating === val ? 0 : val;
+        starBtns.forEach(b => {
+          const r = parseInt(b.dataset.rating);
+          b.classList.toggle('filled', r <= member.rating);
+        });
+        starLabel.textContent = member.rating > 0 ? renderStarLabel(member.rating) : 'Rate your sprint mood';
+      });
+    });
+
+    function checkBlockers() {
+      const badge = $('blocker-badge');
+      if (!badge) return;
+      const hasBlocker = blockEl.value.trim().length > 0;
+      badge.classList.toggle('visible', hasBlocker);
+      blockEl.classList.toggle('blocker-highlight', hasBlocker);
+    }
+
+    function checkHasContent() {
+      const has = doneEl.value.trim().length > 0 || todoEl.value.trim().length > 0 || blockEl.value.trim().length > 0;
+      nextBtn.disabled = !has;
+    }
+
+    doneEl.addEventListener('input', checkHasContent);
+    todoEl.addEventListener('input', checkHasContent);
+    blockEl.addEventListener('input', () => { checkHasContent(); checkBlockers(); });
+    checkHasContent();
+    checkBlockers();
+
+    function advancePerson() {
+      stopTimer();
+      member.timeSpent = state.timerElapsed;
+      member.done = doneEl.value.trim();
+      member.todo = todoEl.value.trim();
+      member.blockers = blockEl.value.trim();
+      member.skipped = false;
+      state.currentIndex++;
+      resetTimer();
+      if (state.currentIndex >= state.members.length) {
+        state.phase = 'summary';
+      }
+      render();
+    }
+
+    nextBtn.addEventListener('click', advancePerson);
+
+    skipBtn.addEventListener('click', () => {
+      stopTimer();
+      member.done = '';
+      member.todo = '';
+      member.blockers = '';
+      member.rating = 0;
+      member.skipped = true;
+      member.timeSpent = state.timerElapsed;
+      state.currentIndex++;
+      resetTimer();
+      if (state.currentIndex >= state.members.length) {
+        state.phase = 'summary';
+      }
+      render();
+    });
+
+    doneEl.focus();
+    startTimer();
+    updatePauseBtn();
+
+    // Keyboard shortcuts
+    function onKey(e) {
+      if (e.ctrlKey && e.key === 'Enter') {
+        e.preventDefault();
+        if (!nextBtn.disabled) advancePerson();
+      }
+      if (e.ctrlKey && e.shiftKey && (e.key === 'S' || e.key === 's')) {
+        e.preventDefault();
+        skipBtn.click();
+      }
+    }
+    document.addEventListener('keydown', onKey);
+    // Cleanup on next render
+    const cleanup = () => document.removeEventListener('keydown', onKey);
+    const observer = new MutationObserver(() => {
+      if (!$('standup-screen')) { cleanup(); observer.disconnect(); }
+    });
+    observer.observe(app, { childList: true });
+  }
+
+  // ─── Summary ──────────────────────────────────────────────────────────────
+  function renderSummary() {
+    stopTimer();
+    progressBar.style.width = '100%';
+    playComplete();
+    fireConfetti();
+
+    const sessionTime = formatSessionTime();
+    const blockerCount = state.members.filter(m => m.blockers).length;
+
+    const html = `
+      <div class="screen" id="summary-screen">
+        <div class="top-bar">
+          <span class="session-timer">⏱ ${sessionTime} total</span>
+          <button class="icon-btn" id="dark-toggle" aria-label="Toggle dark mode">${state.darkMode ? '☀' : '☾'}</button>
+        </div>
+        <div class="card">
+          <div class="summary-header">
+            <div class="summary-header-info">
+              <h1>Standup Complete</h1>
+              <p class="meta">${state.members.length} participants · ${sessionTime} total ${blockerCount > 0 ? `· ${blockerCount} blocker${blockerCount > 1 ? 's' : ''}` : ''}</p>
+              <p class="hint" style="margin-bottom:0;margin-top:4px;">Here's the summary of today's standup.</p>
+            </div>
+          </div>
+          <div id="summary-content">
+            ${state.members.map((m, i) => {
+              const ac = getAvatarColor(i);
+              if (m.skipped) {
+                return `<div class="summary-person"><div class="person-head"><div class="mini-avatar" style="background:${ac}">${getInitials(m.name)}</div><h3>${escapeHtml(m.name)}</h3></div><p class="not-present">— not present</p></div>`;
+              }
+              const sections = [];
+              if (m.rating > 0) sections.push(`<div style="margin-bottom:8px;color:#f5b342;font-size:20px;">${'★'.repeat(m.rating)}${'☆'.repeat(5 - m.rating)}</div>`);
+              if (m.done) sections.push(`<div class="section"><strong>Yesterday</strong><p>${escapeHtml(m.done)}</p></div>`);
+              if (m.todo) sections.push(`<div class="section"><strong>Today</strong><p>${escapeHtml(m.todo)}</p></div>`);
+              if (m.blockers) sections.push(`<div class="section"><strong>Blockers <span class="blocker-tag">⚠ BLOCKER</span></strong><p>${escapeHtml(m.blockers)}</p></div>`);
+              const timeStr = formatTime(m.timeSpent);
+              return `<div class="summary-person"><div class="person-head"><div class="mini-avatar" style="background:${ac}">${getInitials(m.name)}</div><h3>${escapeHtml(m.name)}</h3></div>${sections.join('')}${m.timeSpent > 0 ? `<p class="time-spent">⏱ ${timeStr}</p>` : ''}</div>`;
+            }).join('')}
+          </div>
+          ${state.scribeNotes ? `<div class="scribe-section"><h3>📝 Notes</h3><p>${escapeHtml(state.scribeNotes)}</p></div>` : ''}
+          <div class="export-group" style="margin-top:20px;">
+            <button class="btn btn-primary" id="download-pdf-btn">Download PDF</button>
+            <button class="btn btn-secondary" id="new-standup-btn">New Standup</button>
+          </div>
+          <div class="scribe-section">
+            <h3>✏️ Meeting Notes</h3>
+            <textarea id="scribe-textarea" placeholder="Add any additional notes about this standup…" style="min-height:60px;">${escapeHtml(state.scribeNotes)}</textarea>
+            <div class="btn-row" style="margin-top:8px;">
+              <button class="btn btn-secondary" id="save-notes-btn">Save Notes</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    app.innerHTML = html;
+
+    $('download-pdf-btn').addEventListener('click', downloadPDF);
+    $('new-standup-btn').addEventListener('click', newStandup);
+
+    $('save-notes-btn').addEventListener('click', () => {
+      state.scribeNotes = ($('scribe-textarea') || {}).value || '';
+      saveSession();
+      toast('Notes saved');
+    });
+
+    const darkToggle = $('dark-toggle');
+    darkToggle.addEventListener('click', () => {
+      state.darkMode = !state.darkMode;
+      applyDarkMode();
+      savePrefs();
+    });
+  }
+
+  // ─── Actions ──────────────────────────────────────────────────────────────
+  function downloadPDF() {
+    const btn = $('download-pdf-btn');
+    if (btn) btn.textContent = 'Generating…';
+
+    const date = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    const sessionTime = formatSessionTime();
+
+    const membersHTML = state.members.map((m, i) => {
+      const ac = getAvatarColor(i);
+      if (m.skipped) {
+        return `<div style="margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid #e0e0e0;"><div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;"><div style="width:32px;height:32px;border-radius:50%;background:${ac};display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:600;">${getInitials(m.name)}</div><strong style="font-size:16px;">${escapeHtml(m.name)}</strong></div><em style="color:#999;">— not present</em></div>`;
+      }
+      const sections = [];
+      if (m.rating > 0) sections.push(`<div style="color:#f5b342;font-size:18px;margin-bottom:6px;">${'★'.repeat(m.rating)}${'☆'.repeat(5 - m.rating)}</div>`);
+      if (m.done) sections.push(`<div style="margin-bottom:6px;"><strong style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:0.5px;">Yesterday</strong><p style="margin:2px 0 0;font-size:14px;">${escapeHtml(m.done)}</p></div>`);
+      if (m.todo) sections.push(`<div style="margin-bottom:6px;"><strong style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:0.5px;">Today</strong><p style="margin:2px 0 0;font-size:14px;">${escapeHtml(m.todo)}</p></div>`);
+      if (m.blockers) sections.push(`<div style="margin-bottom:6px;"><strong style="font-size:11px;color:#d9534f;text-transform:uppercase;letter-spacing:0.5px;">Blockers</strong><p style="margin:2px 0 0;font-size:14px;">${escapeHtml(m.blockers)}</p></div>`);
+      const timeStr = formatTime(m.timeSpent);
+      return `<div style="margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid #e0e0e0;"><div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;"><div style="width:32px;height:32px;border-radius:50%;background:${ac};display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:600;">${getInitials(m.name)}</div><strong style="font-size:16px;">${escapeHtml(m.name)}</strong>${m.timeSpent > 0 ? `<span style="font-size:11px;color:#999;margin-left:auto;">${timeStr}</span>` : ''}</div>${sections.join('')}</div>`;
+    }).join('');
+
+    const notesHTML = state.scribeNotes ? `<div style="margin-top:16px;padding-top:12px;border-top:1px solid #e0e0e0;"><h3 style="font-size:16px;margin-bottom:6px;">Meeting Notes</h3><p style="font-size:14px;white-space:pre-wrap;">${escapeHtml(state.scribeNotes)}</p></div>` : '';
+
+    const printWin = window.open('', '_blank', 'width=800,height=600');
+    printWin.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Daily Standup Summary</title><style>
+      body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 700px; margin: 40px auto; padding: 0 24px; color: #1a1a2e; line-height: 1.5; font-size: 15px; }
+      h1 { font-size: 28px; margin-bottom: 4px; font-weight: 600; }
+      .meta { color: #888; font-size: 13px; margin-bottom: 24px; }
+      hr { border: none; border-top: 1px solid #e0e0e0; margin: 20px 0; }
+      @media print { body { margin: 0; padding: 20px; } }
+    </style></head><body>
+      <h1>Daily Standup Summary</h1>
+      <div class="meta">${escapeHtml(date)} · ${state.members.length} participants · ${sessionTime} total</div>
+      ${membersHTML}
+      ${notesHTML}
+      <hr>
+      <p style="color:#999;font-size:11px;">Generated by Daily Standup app</p>
+    </body></html>`);
+    printWin.document.close();
+    printWin.focus();
+
+    setTimeout(() => {
+      printWin.print();
+      if (btn) btn.textContent = 'Download PDF';
+    }, 300);
+  }
+
+  function newStandup() {
+    clearSession();
+    state = {
+      phase: 'setup',
+      members: [],
+      currentIndex: 0,
+      timerRunning: false,
+      timerStart: null,
+      timerElapsed: 0,
+      timerInterval: null,
+      hasPulsed: false,
+      timeLimit: state.timeLimit,
+      soundEnabled: state.soundEnabled,
+      darkMode: state.darkMode,
+      sessionStart: null,
+      scribeNotes: ''
+    };
+    savePrefs();
+    render();
+  }
+
+  // ─── Resume banner ────────────────────────────────────────────────────────
+  function showResumeBanner(data) {
+    const banner = resumeBanner;
+    banner.style.display = 'block';
+    banner.innerHTML = `
+      Resume last standup?
+      <button id="resume-yes">Resume</button>
+      <button class="discard" id="resume-no">Discard</button>
+    `;
+    $('resume-yes').addEventListener('click', () => {
+      banner.style.display = 'none';
+      resumeSession(data);
+    });
+    $('resume-no').addEventListener('click', () => {
+      banner.style.display = 'none';
+      clearSession();
+    });
+  }
+
+  function resumeSession(data) {
+    state.phase = data.phase || 'setup';
+    state.members = data.members || [];
+    state.currentIndex = data.currentIndex || 0;
+    state.timerElapsed = data.timerElapsed || 0;
+    state.timerRunning = false;
+    state.timerStart = null;
+    state.timeLimit = data.timeLimit || 60000;
+    state.soundEnabled = data.soundEnabled !== false;
+    state.darkMode = !!data.darkMode;
+    state.sessionStart = data.sessionStart || null;
+    state.scribeNotes = data.scribeNotes || '';
+    render();
+  }
+
+  // ─── Helpers ──────────────────────────────────────────────────────────────
+  function escapeHtml(str) {
+    if (typeof str !== 'string') return '';
+    const d = document.createElement('div');
+    d.textContent = str;
+    return d.innerHTML;
+  }
+
+  function renderStarLabel(rating) {
+    const labels = ['', 'Needs improvement', 'Fair', 'Good', 'Great', 'Excellent'];
+    return labels[rating] || '';
+  }
+
+  function formatTime(ms) {
+    const totalSec = Math.round(ms / 1000);
+    const min = Math.floor(totalSec / 60);
+    const sec = totalSec % 60;
+    if (min > 0) return `${min}m ${sec}s`;
+    return `${sec}s`;
+  }
+
+  // ─── Init ─────────────────────────────────────────────────────────────────
+  function init() {
+    loadPrefs();
+    applyDarkMode();
+    const saved = loadSession();
+    if (saved && saved.phase && saved.phase !== 'setup' && saved.members && saved.members.length > 0) {
+      showResumeBanner(saved);
+      state.phase = 'setup';
+      state.members = [];
+      renderSetup();
+    } else {
+      clearSession();
+      render();
+    }
+  }
+
+  init();
+
+})();
+</script>
+</body>
+</html>
